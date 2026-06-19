@@ -126,8 +126,8 @@ def stamp_tx(
     # Derive address for UTXO lookup
     addr = _derive_address(pub_hex, network)
 
-    # Create transaction
-    tx = Transaction(network=network)
+    # Create transaction (legacy format — OP_RETURN works with both)
+    tx = Transaction(network=network, witness_type='legacy')
 
     # Add OP_RETURN output (value = 0)
     tx.add_output(0, lock_script=op_return_script)
@@ -152,22 +152,22 @@ def stamp_tx(
         utxo_value = utxo_vout_data["value"]
         utxo_script = utxo_vout_data["scriptpubkey"]
 
-        # Add input
+        # Add input - value from Blockstream API is in satoshis
         tx.add_input(
             prev_txid=utxo_txid,
             output_n=utxo_vout,
-            unlocking_script_size=100,  # estimate for P2PKH
             value=utxo_value,
+            locking_script=utxo_script,
         )
 
         # Add change output if there's excess
         fee = _estimate_fee(tx, fee_sats)
-        change = int(utxo_value * 100_000_000) - fee  # BTC to sats
+        change = utxo_value - fee  # both in satoshis
         if change > 546:  # dust threshold
             tx.add_output(change, address=addr)
 
         # Sign
-        key = Key(import_key=priv_hex)
+        key = Key(import_key=priv_hex, network=network)
         tx.sign(key)
     else:
         # No UTXO provided — build unsigned tx for user to sign manually
@@ -189,10 +189,8 @@ def stamp_tx(
 
     if broadcast_resp.status_code != 200:
         error_msg = broadcast_resp.text.strip()
-        raise httpx.HTTPError(
-            f"Broadcast failed (HTTP {broadcast_resp.status_code}): {error_msg}",
-            request=broadcast_resp.request,
-            response=broadcast_resp,
+        raise RuntimeError(
+            f"Broadcast failed (HTTP {broadcast_resp.status_code}): {error_msg}"
         )
 
     txid = broadcast_resp.text.strip()
@@ -242,7 +240,7 @@ def extract_op_return(tx_data: dict) -> list[bytes]:
     """
     results = []
     for vout in tx_data.get("vout", []):
-        if vout.get("scriptpubkey_type") == "nulldata":
+        if vout.get("scriptpubkey_type") in ("nulldata", "op_return"):
             script_hex = vout.get("scriptpubkey", "")
             script_bytes = bytes.fromhex(script_hex)
             # Skip OP_RETURN (0x6a) and length byte, take the data
