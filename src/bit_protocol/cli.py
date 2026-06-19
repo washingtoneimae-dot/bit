@@ -23,6 +23,7 @@ from .broadcast import (
     stamp_tx,
 )
 from .db import count_stamps, get_stamp, save_stamp, search_stamps
+from .peer import add_peer, count_peers, list_peers, remove_peer, sync_all_peers, sync_peer
 
 
 @click.group()
@@ -301,6 +302,99 @@ def search(query, field):
         click.echo("")
 
 
+# ── peer ──────────────────────────────────────────────────────
+
+
+@cli.group()
+def peer():
+    """Manage peer indexes and sync stamps.
+
+    Peers are public Bit Protocol indices that exchange stamps.
+    Syncing pulls stamps from known peers into your local database.
+    """
+    pass
+
+
+@peer.command(name="add")
+@click.argument("url")
+def peer_add(url):
+    """Add a peer index URL to sync from.
+
+    URL is the full address of the peer's public index,
+    e.g. https://bit.example.com:8787
+    """
+    if add_peer(url):
+        click.echo(f"✓ Added peer: {url}")
+    else:
+        click.echo(f"  Peer already known: {url}")
+
+
+@peer.command(name="remove")
+@click.argument("url")
+def peer_remove(url):
+    """Remove a peer index from the known list."""
+    if remove_peer(url):
+        click.echo(f"✓ Removed peer: {url}")
+    else:
+        click.echo(f"  Peer not found: {url}")
+
+
+@peer.command(name="list")
+def peer_list():
+    """List all known peer indexes."""
+    peers = list_peers()
+    if not peers:
+        click.echo("No peers configured.")
+        click.echo("  Add one:  bit peer add https://example.com:8787")
+        return
+
+    click.echo(f"Known peers ({len(peers)}):")
+    click.echo("")
+    for i, url in enumerate(peers, 1):
+        click.echo(f"  {i}. {url}")
+
+
+@peer.command(name="sync")
+@click.option("--url", help="Sync from a specific peer URL instead of all")
+def peer_sync(url):
+    """Sync stamps from known peers.
+
+    Pulls all new stamps from each peer's index into your
+    local database. Stamps are deduplicated by hash — only
+    new stamps are added.
+    """
+    if url:
+        click.echo(f"Syncing from: {url}")
+        result = sync_peer(url)
+        click.echo(f"  New stamps:  {result['new_stamps']}")
+        click.echo(f"  Pages:       {result['pages']}")
+        if result['errors']:
+            click.echo(f"  Errors:      {len(result['errors'])}")
+            for err in result['errors'][:3]:
+                click.echo(f"    ⚠ {err}")
+        return
+
+    peers = list_peers()
+    if not peers:
+        click.echo("No peers configured.")
+        click.echo("  Add one:  bit peer add https://example.com:8787")
+        return
+
+    click.echo(f"Syncing from {len(peers)} peer(s)...")
+    click.echo("")
+    results = sync_all_peers()
+    total = sum(r["new_stamps"] for r in results)
+    for r in results:
+        status = "✓" if not r["errors"] else "⚠"
+        click.echo(
+            f"  {status} {r['url']}: "
+            f"{r['new_stamps']} new stamps, "
+            f"{r['pages']} pages"
+        )
+    click.echo("")
+    click.echo(f"Total new stamps: {total}")
+
+
 # ── status ────────────────────────────────────────────────────
 
 
@@ -323,6 +417,7 @@ def status():
         click.echo(f"  Identity:      ✗ Not initialized (run 'bit init')")
 
     click.echo(f"  Local stamps:  {stamp_count}")
+    click.echo(f"  Peers:         {count_peers()}")
     click.echo(f"  Data dir:      ~/.bit/")
 
 

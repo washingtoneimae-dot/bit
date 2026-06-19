@@ -4,10 +4,11 @@ An optional public index where nodes can broadcast and query stamps.
 Runs as a FastAPI server behind Docker Compose.
 
 Endpoints:
-    POST /stamp       - Record a new stamp
-    GET /stamp/{hash} - Look up a stamp by hash
-    GET /search       - Search stamps by query
-    GET /health       - Health check
+    POST /stamp         - Record a new stamp
+    GET /stamp/{hash}   - Look up a stamp by hash
+    GET /search         - Search stamps by query
+    GET /sync           - Sync new/updated stamps since a timestamp (peer-to-peer)
+    GET /health         - Health check
 """
 
 import json
@@ -21,7 +22,7 @@ from pydantic import BaseModel
 app = FastAPI(
     title="Bit Protocol Public Index",
     description="Open index for Bit Protocol IP stamps",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 DB_PATH = Path("/data/stamps.db")  # Docker volume mount
@@ -46,7 +47,25 @@ def get_db() -> sqlite3.Connection:
             indexed_at INTEGER NOT NULL
         )
     """)
+    # Index for sync queries (indexed_at is the sync cursor)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_stamps_indexed_at
+        ON stamps(indexed_at)
+    """)
     return conn
+
+
+def _row_to_dict(row: sqlite3.Row) -> dict:
+    """Convert a SQLite row to a dict with parsed metadata."""
+    d = dict(row)
+    if d.get("metadata"):
+        try:
+            d["metadata"] = json.loads(d["metadata"])
+        except (json.JSONDecodeError, TypeError):
+            d["metadata"] = {}
+    if not d.get("metadata"):
+        d["metadata"] = {}
+    return d
 
 
 # ── Models ───────────────────────────────────────────────────
@@ -73,6 +92,12 @@ class StampResponse(BaseModel):
     indexed_at: int
 
 
+class SyncResponse(BaseModel):
+    stamps: list[StampResponse]
+    synced_at: int
+    count: int
+
+
 # ── Endpoints ─────────────────────────────────────────────────
 
 
@@ -95,12 +120,12 @@ def create_stamp(stamp: StampPost):
                 stamp.public_key,
                 json.dumps(stamp.metadata),
                 stamp.network,
-                stamp.created_at if stamp.created_at else now,
+                now,
                 now,
             ),
         )
         conn.commit()
-        return {"status": "ok", "hash": stamp.hash}
+        return {"status": "ok", "hash": stamp.hash, "indexed_at": now}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -116,16 +141,7 @@ def get_stamp(file_hash: str):
         row = cursor.fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="Stamp not found")
-
-        d = dict(row)
-        if d.get("metadata"):
-            try:
-                d["metadata"] = json.loads(d["metadata"])
-            except (json.JSONDecodeError, TypeError):
-                d["metadata"] = {}
-        if not d.get("metadata"):
-            d["metadata"] = {}
-        return d
+        return _row_to_dict(row)
     finally:
         conn.close()
 
@@ -151,18 +167,43 @@ def search_stamps(
             (f"%{q}%", limit),
         )
         rows = cursor.fetchall()
-        results = []
-        for row in rows:
-            d = dict(row)
-            if d.get("metadata"):
-                try:
-                    d["metadata"] = json.loads(d["metadata"])
-                except (json.JSONDecodeError, TypeError):
-                    d["metadata"] = {}
-            if not d.get("metadata"):
-                d["metadata"] = {}
-            results.append(d)
+        results = [_row_to_dict(row) for row in rows]
         return {"results": results, "count": len(results)}
+    finally:
+        conn.close()
+
+
+@app.get("/sync", response_model=SyncResponse)
+def sync(
+    since: int = Query(
+        0, ge=0, description="Unix timestamp — return stamps indexed after this time"
+    ),
+    limit: int = Query(500, ge=1, le=2000, description="Max stamps to return"),
+):
+    """Sync stamps from another peer index.
+
+    Returns all stamps that were indexed after the given timestamp.
+    The requester deduplicates by hash on their end.
+
+    Time-based pagination: use the last stamp's indexed_at as `since`
+    for the next request.
+    """
+    conn = get_db()
+    try:
+        cursor = conn.execute(
+            """SELECT * FROM stamps
+               WHERE indexed_at > ?
+               ORDER BY indexed_at ASC, hash ASC
+               LIMIT ?""",
+            (since, limit),
+        )
+        rows = cursor.fetchall()
+        stamps = [_row_to_dict(row) for row in rows]
+        return {
+            "stamps": stamps,
+            "synced_at": int(time.time()),
+            "count": len(stamps),
+        }
     finally:
         conn.close()
 
