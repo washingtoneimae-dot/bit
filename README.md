@@ -4,12 +4,14 @@
 
 Stamp your files, code, and ideas to the Bitcoin blockchain as immutable proof that you had them at a specific point in time. No disclosure. No gatekeepers. No subscription fees.
 
-> **✅ Verified on Bitcoin Testnet** — [txid: b98761beaf2b4e8fb60b3fe6ee767f2cb9347fb785f8b57e02328b00cef4ab4c](https://blockstream.info/testnet/tx/b98761beaf2b4e8fb60b3fe6ee767f2cb9347fb785f8b57e02328b00cef4ab4c)
+> **✅ Verified on Bitcoin Testnet**
+> Stamp 1: [`b98761be...`](https://blockstream.info/testnet/tx/b98761beaf2b4e8fb60b3fe6ee767f2cb9347fb785f8b57e02328b00cef4ab4c) — sample file
+> Stamp 2: [`64f0bb98...`](https://blockstream.info/testnet/tx/64f0bb98e5a90084ee4f6523fc1d96cee0634811bb08c83cfe52f2a532b05002) — conception document
 
 ```bash
 pip install bit-protocol
 bit init
-bit stamp my-whitepaper.pdf --utxo=<txid>:<vout>
+bit stamp my-whitepaper.pdf
 bit verify my-whitepaper.pdf --txid=<txid>
 ```
 
@@ -64,8 +66,10 @@ Send some tBTC to your address (shown by `bit status`) from a [testnet faucet](h
 ### 4. Stamp a file
 
 ```bash
-bit stamp myfile.pdf --utxo=<txid>:<vout>
+bit stamp myfile.pdf
 ```
+
+Bit auto-discovers your UTXO — no manual hex hunting.
 
 ### 5. Verify
 
@@ -79,14 +83,16 @@ bit verify myfile.pdf --txid=<txid>
 bit status
 ```
 
-## Real Example (Testnet)
+## Real Examples (Testnet)
+
+### Sample file stamp
 
 ```bash
 # Generate key (one-time)
 bit init
 
-# Stamp a file
-bit stamp whitepaper.pdf --utxo=62256e0bda6e7972...:0
+# Stamp a file — UTXO auto-detected
+bit stamp whitepaper.pdf
 
 # Output:
 # ✓ Stamped to Bitcoin testnet!
@@ -98,6 +104,18 @@ bit verify whitepaper.pdf --txid=b98761beaf2b4e8fb60b3fe6ee767f2cb9347fb785f8b57
 
 # Output:
 # ✓ MATCH — PROVEN: You possessed this exact file at block time.
+```
+
+### Session concept stamp
+
+The conception document for Bit Protocol itself was stamped to Bitcoin as proof of prior art:
+
+```bash
+git clone https://github.com/washingtoneimae-dot/bit.git
+cd bit
+bit verify BIT_PROTOCOL_CONCEPTION.md \
+  --txid=64f0bb98e5a90084ee4f6523fc1d96cee0634811bb08c83cfe52f2a532b05002
+# ✓ PROVEN: conception document existed at block time
 ```
 
 ## Commands
