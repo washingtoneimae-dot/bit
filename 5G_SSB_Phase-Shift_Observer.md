@@ -55,3 +55,19 @@ Concept validated. Synthetic calibration run (Nairobi, June 2026):
 This document is stamped to Bitcoin Testnet as prior art.
 TXID: 3ed6dc22bd669c04620490f29e0b50adf8332e009f5e5e2786e3cc1a42048b0c
 View: https://blockstream.info/testnet/tx/3ed6dc22bd669c04620490f29e0b50adf8332e009f5e5e2786e3cc1a42048b0c
+
+### Simulator
+A BBU phase log generator script is in the repo at `scripts/bbu_log_sim.py`.
+Generates realistic wind-correlated phase correction data with configurable
+alpha, noise, wind pattern, and plastic deformation events.
+
+Stamped to Bitcoin Testnet: `4aa7b3ed4150f6aac61b149a7a5b0065084d3aebdcbceb49ea55c6c4b591e0ef`
+
+Usage:
+```bash
+python scripts/bbu_log_sim.py --hours=48 --pattern=diurnal --event=12:00,1.0
+```
+
+Output: `bbu_phase_log.csv` with columns timestamp, wind_shear_mps,
+phase_correction_deg, ground_truth_elastic_deg, ground_truth_plastic_deg.
+
