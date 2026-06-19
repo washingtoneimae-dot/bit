@@ -1,0 +1,11 @@
+services:
+  bit-index:
+    build: ./index
+    ports:
+      - "8787:8787"
+    volumes:
+      - bit_data:/data
+    restart: unless-stopped
+
+volumes:
+  bit_data:
