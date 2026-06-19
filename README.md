@@ -4,16 +4,19 @@
 
 Stamp your files, code, and ideas to the Bitcoin blockchain as immutable proof that you had them at a specific point in time. No disclosure. No gatekeepers. No subscription fees.
 
-> **✅ Verified on Bitcoin Testnet**
-> Stamp 1: [`b98761be...`](https://blockstream.info/testnet/tx/b98761beaf2b4e8fb60b3fe6ee767f2cb9347fb785f8b57e02328b00cef4ab4c) — sample file
-> Stamp 2: [`64f0bb98...`](https://blockstream.info/testnet/tx/64f0bb98e5a90084ee4f6523fc1d96cee0634811bb08c83cfe52f2a532b05002) — conception document
-
 ```bash
 pip install bit-protocol
 bit init
 bit stamp my-whitepaper.pdf
 bit verify my-whitepaper.pdf --txid=<txid>
 ```
+
+> **✅ Verified on Bitcoin Testnet**
+> [Sample file](https://blockstream.info/testnet/tx/b98761beaf2b4e8fb60b3fe6ee767f2cb9347fb785f8b57e02328b00cef4ab4c) ·
+> [Conception doc](https://blockstream.info/testnet/tx/64f0bb98e5a90084ee4f6523fc1d96cee0634811bb08c83cfe52f2a532b05002) ·
+> [5G SSB Observer](https://blockstream.info/testnet/tx/3ed6dc22bd669c04620490f29e0b50adf8332e009f5e5e2786e3cc1a42048b0c)
+
+---
 
 ## Why
 
@@ -30,7 +33,7 @@ bit verify my-whitepaper.pdf --txid=<txid>
 ```
 Your file → SHA-256 hash → OP_RETURN payload → Bitcoin tx → Immutable proof
                       ↓
-              Local SQLite cache
+              Local SQLite cache ←──── Peer sync (optional)
 ```
 
 ### OP_RETURN Schema
@@ -41,81 +44,28 @@ Your file → SHA-256 hash → OP_RETURN payload → Bitcoin tx → Immutable pr
 | "BIT"    | 0x01    | 0x01-04 | File hash  | Key ID    | JSON      |
 ```
 
-Total: **41–83 bytes** — fits within Bitcoin's original OP_RETURN limit and is forward-compatible with Bitcoin Core v30's 100KB expansion.
+Total: **41–83 bytes** — fits Bitcoin's original OP_RETURN limit and is forward-compatible with Bitcoin Core v30's 100KB expansion.
 
 ## Quickstart
 
-### 1. Install
-
 ```bash
+# 1. Install
 pip install bit-protocol
-```
 
-### 2. Generate your identity
-
-```bash
+# 2. Generate your identity
 bit init
-```
 
-Creates a secp256k1 keypair at `~/.bit/key.pem`.
+# 3. Get testnet BTC from a faucet (send to address from `bit status`)
+#    https://coinfaucet.eu/en/btc-testnet/
 
-### 3. Get testnet BTC
-
-Send some tBTC to your address (shown by `bit status`) from a [testnet faucet](https://coinfaucet.eu/en/btc-testnet/).
-
-### 4. Stamp a file
-
-```bash
+# 4. Stamp a file — UTXO auto-detected, no hex hunting
 bit stamp myfile.pdf
-```
 
-Bit auto-discovers your UTXO — no manual hex hunting.
-
-### 5. Verify
-
-```bash
+# 5. Verify
 bit verify myfile.pdf --txid=<txid>
-```
 
-### 6. Check your stats
-
-```bash
+# 6. Check stats
 bit status
-```
-
-## Real Examples (Testnet)
-
-### Sample file stamp
-
-```bash
-# Generate key (one-time)
-bit init
-
-# Stamp a file — UTXO auto-detected
-bit stamp whitepaper.pdf
-
-# Output:
-# ✓ Stamped to Bitcoin testnet!
-#   txid: b98761beaf2b4e8fb60b3fe6ee767f2cb9347fb785f8b57e02328b00cef4ab4c
-#   View: https://blockstream.info/testnet/tx/b98761beaf2b4e8fb60b3fe6ee767f2cb9347fb785f8b57e02328b00cef4ab4c
-
-# Verify
-bit verify whitepaper.pdf --txid=b98761beaf2b4e8fb60b3fe6ee767f2cb9347fb785f8b57e02328b00cef4ab4c
-
-# Output:
-# ✓ MATCH — PROVEN: You possessed this exact file at block time.
-```
-
-### Session concept stamp
-
-The conception document for Bit Protocol itself was stamped to Bitcoin as proof of prior art:
-
-```bash
-git clone https://github.com/washingtoneimae-dot/bit.git
-cd bit
-bit verify BIT_PROTOCOL_CONCEPTION.md \
-  --txid=64f0bb98e5a90084ee4f6523fc1d96cee0634811bb08c83cfe52f2a532b05002
-# ✓ PROVEN: conception document existed at block time
 ```
 
 ## Commands
@@ -123,69 +73,121 @@ bit verify BIT_PROTOCOL_CONCEPTION.md \
 | Command | Description |
 |---------|-------------|
 | `bit init` | Generate your identity key |
-| `bit status` | Show identity, wallet, and stamp count |
+| `bit status` | Show identity, peers, and stamp count |
 | `bit stamp <file>` | Stamp a file to Bitcoin |
 | `bit verify <file> --txid=<id>` | Verify a file against an on-chain stamp |
 | `bit search <query>` | Search your local stamp database |
+| `bit peer add <url>` | Connect to another index for stamp sharing |
+| `bit peer list` | Show all connected peers |
+| `bit peer sync` | Pull stamps from all connected peers |
 
 ### Options
 
 ```bash
-bit stamp file.pdf --type=source_code     # Tag content type
-bit stamp file.pdf --mainnet              # Use Bitcoin mainnet
-bit stamp file.pdf --utxo=abc123:0        # Specify UTXO for fees
-bit stamp --text "my idea" --utxo=abc:0   # Stamp from text, not file
-bit stamp file.pdf --meta='{"v":"1.0"}'   # Attach metadata
-bit stamp file.pdf --fee=5000             # Custom fee in satoshis
+bit stamp file.pdf --type=source_code      # Tag content type
+bit stamp file.pdf --mainnet               # Use Bitcoin mainnet
+bit stamp file.pdf --utxo=abc123:0         # Manual UTXO override
+bit stamp --text "my idea"                 # Stamp from text, not file
+bit stamp file.pdf --meta='{"v":"1.0"}'    # Attach metadata
+bit stamp file.pdf --fee=5000              # Custom fee in satoshis
 ```
+
+## Peer-to-Peer Sync
+
+Bit indexes can discover and exchange stamps over a gossip network.
+
+```bash
+# Alice runs her index
+docker compose up -d     # bit.alice.com:8787
+
+# Bob connects and syncs
+bit peer add https://bit.alice.com:8787
+bit peer sync
+```
+
+```
+bit peer add <url>      → Register a peer
+bit peer list           → Show all connected peers
+bit peer sync           → Pull new stamps from all peers
+bit peer remove <url>   → Disconnect a peer
+```
+
+**Trust model:** The blockchain is the source of truth. Every stamp synced from a peer can be independently verified against Bitcoin. Peers are a search network, not a consensus layer.
 
 ## Public Index (optional)
 
-Share stamps with the network via an optional public index:
+Run your own public index to share stamps with the network:
 
 ```bash
 docker compose up -d
+```
+
+### API Reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/stamp` | Record a stamp `{hash, txid, content_type, key_fingerprint, public_key?, metadata?, network?}` |
+| `GET` | `/stamp/{hash}` | Look up a stamp by SHA-256 hash |
+| `GET` | `/search?q=&field=` | Search by hash, txid, key_fingerprint, or content_type |
+| `GET` | `/sync?since=<ts>&limit=` | Pull stamps indexed after a timestamp (peer sync) |
+| `GET` | `/health` | Health check + stamp count |
+
+```bash
 curl http://localhost:8787/health
 
-# Record a stamp
+POST /stamp
 curl -X POST http://localhost:8787/stamp \
   -H "Content-Type: application/json" \
   -d '{"hash":"abc...","txid":"def...","content_type":"document","key_fingerprint":"abcd1234"}'
 
-# Look up a stamp
+GET /stamp/{hash}
 curl http://localhost:8787/stamp/abc...
 
-# Search
+GET /search
 curl "http://localhost:8787/search?q=abc&field=hash"
+
+GET /sync
+curl "http://localhost:8787/sync?since=0&limit=100"
 ```
 
 ## Pre-commit Hook (optional)
 
-Auto-stamp files on every commit:
+Auto-stamp staged files on every commit:
 
 ```bash
 cp scripts/pre-commit.sh .git/hooks/pre-commit
 chmod +x .git/hooks/pre-commit
 ```
 
-Stamps all staged `.md` and `.pdf` files. Edit the hook to change tracked extensions.
+Tracks `.md`, `.pdf`, `.txt`, `.py`, `.js` files by default. Edit `TRACKED_EXTENSIONS` in the hook to change. Requires `BIT_UTXO` env var or a funded wallet.
 
-## Roadmap
+## Verified Proofs
 
-- [x] Core protocol schema
-- [x] CLI (init, stamp, verify, search)
-- [x] Bitcoin testnet broadcast
-- [x] Local SQLite database
-- [x] Public index API
-- [x] Pre-commit git hook
-- [x] Live on-chain verification
-- [ ] PyPI release (`pip install bit-protocol`)
-- [ ] GitHub Action for CI stamping
-- [ ] VS Code extension
-- [ ] UTXO scanner (auto-select inputs)
-- [ ] HD key derivation (BIP32/BIP44 for IP families)
-- [ ] Fractional IP tokenization
-- [ ] Multi-chain support (Ethereum, Solana)
+These documents exist in this repo and are timestamped on Bitcoin Testnet:
+
+| Document | Txid | Purpose |
+|----------|------|---------|
+| `BIT_PROTOCOL_CONCEPTION.md` | [`64f0bb98...`](https://blockstream.info/testnet/tx/64f0bb98e5a90084ee4f6523fc1d96cee0634811bb08c83cfe52f2a532b05002) | Project conception & architecture decisions |
+| `5G_SSB_Phase-Shift_Observer.md` | [`3ed6dc22...`](https://blockstream.info/testnet/tx/3ed6dc22bd669c04620490f29e0b50adf8332e009f5e5e2786e3cc1a42048b0c) | Zero-hardware tower structural health monitor |
+
+Verify any of them:
+
+```bash
+git clone https://github.com/washingtoneimae-dot/bit.git
+cd bit
+bit verify BIT_PROTOCOL_CONCEPTION.md --txid=64f0bb98...
+bit verify 5G_SSB_Phase-Shift_Observer.md --txid=3ed6dc22...
+```
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| `No spendable UTXO found` | No tBTC in your wallet | Send tBTC from a [faucet](https://coinfaucet.eu/en/btc-testnet/) to your address (`bit status`) |
+| `Faucet says "bots not allowed"` | WSL/datacenter IP flagged | Open the faucet in a normal Windows/Mac browser instead |
+| `Broadcast failed: TX decode` | Network issue or Blockstream down | Wait 30s and retry; check [Blockstream status](https://blockstream.info/testnet/) |
+| `The read operation timed out` | Network connectivity issue | Retry; if persistent, use `--utxo=<txid>:<vout>` to skip UTXO scan |
+| `metadata exceeds remaining space` | Metadata JSON too long for OP_RETURN | Keep metadata under 42 bytes of JSON; use short keys |
 
 ## Development
 
@@ -198,6 +200,24 @@ pip install -e ".[dev]"
 pytest tests/ -v
 ```
 
+## Roadmap
+
+- [x] Core protocol schema (OP_RETURN payload standard)
+- [x] CLI (init, stamp, verify, search, status)
+- [x] Bitcoin testnet broadcast + mainnet support
+- [x] UTXO scanner (auto-discover spendable inputs)
+- [x] Local SQLite database
+- [x] Public index API (FastAPI + Docker)
+- [x] Peer-to-peer sync between indexes
+- [x] Pre-commit git hook
+- [x] GitHub CI (test, build, publish to PyPI)
+- [x] PyPI release (`pip install bit-protocol`)
+- [x] Live on-chain verification (3 stamps verified)
+- [ ] HD key derivation (BIP32/BIP44 for IP families)
+- [ ] Fractional IP tokenization
+- [ ] Multi-chain support (Ethereum, Solana)
+- [ ] VS Code extension
+
 ## Strategy
 
 Bit Protocol is the **Linux to Bernstein's Windows** — an open-source protocol that any developer can self-host, customize, or contribute to.
@@ -207,11 +227,17 @@ Bit Protocol is the **Linux to Bernstein's Windows** — an open-source protocol
 | Model | Closed SaaS | Open Core |
 | Price | $54–$329/mo | Free (self-host) |
 | Keys | Account-based | Self-sovereign |
-| Registry | Centralized | Bitcoin + optional index |
-| Legal | WIPO-recognized | Community-built |
+| Registry | Centralized | Bitcoin + peer network |
+| Legal | WIPO-recognized | Community-built + on-chain proof |
 | Tokenization | None | Planned (fractional IP) |
 
 The strategy: free self-host → developer adoption → prior art shield → network of interoperable registries that no single entity controls or can ignore.
+
+## Security
+
+Private keys are stored in `~/.bit/key.pem` with `chmod 600` (owner read/write only). The key never leaves your machine. Transactions are signed locally. Blockchain verification is trustless — anyone can independently verify a stamp without the Bit Protocol software.
+
+See `SECURITY.md` for vulnerability reporting.
 
 ## License
 
