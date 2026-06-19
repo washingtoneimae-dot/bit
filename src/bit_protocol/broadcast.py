@@ -67,6 +67,44 @@ def _derive_address(
     return key.address()
 
 
+def find_utxo(
+    address: str,
+    network: str = "testnet",
+    min_sats: int = DEFAULT_FEE_SATS + 546,
+) -> tuple[str, int, int, str] | None:
+    """Auto-discover a spendable UTXO for an address.
+
+    Queries Blockstream API and returns the first UTXO with enough
+    value to cover the fee plus dust threshold.
+
+    Args:
+        address: Bitcoin address to scan
+        network: 'testnet' or 'mainnet'
+        min_sats: Minimum satoshi value required
+
+    Returns:
+        Tuple of (txid, vout, value_sats, script_hex) or None if no UTXO found
+    """
+    utxos = _fetch_utxos(address, network)
+    for utxo in utxos:
+        value = utxo.get("value", 0)
+        if value >= min_sats:
+            # Fetch the tx to get the locking script
+            base = _blockstream_url(network)
+            resp = httpx.get(f"{base}tx/{utxo['txid']}", timeout=FETCH_TIMEOUT)
+            if resp.status_code != 200:
+                continue
+            tx_data = resp.json()
+            vout_idx = utxo["vout"]
+            if vout_idx >= len(tx_data.get("vout", [])):
+                continue
+            vout_data = tx_data["vout"][vout_idx]
+            script = vout_data.get("scriptpubkey", "")
+            if script:
+                return (utxo["txid"], vout_idx, value, script)
+    return None
+
+
 def _estimate_fee(tx: Transaction, fee_sats: int = DEFAULT_FEE_SATS) -> int:
     """Calculate fee based on tx size.
 
@@ -170,13 +208,32 @@ def stamp_tx(
         key = Key(import_key=priv_hex, network=network)
         tx.sign(key)
     else:
-        # No UTXO provided — build unsigned tx for user to sign manually
-        # This is the "offline" mode
-        raise ValueError(
-            "No UTXO provided. You need a Bitcoin UTXO to pay transaction fees.\n\n"
-            f"Get testnet BTC from a faucet sent to this address: {addr}\n"
-            "Then retry with: bit stamp <file> --utxo=<txid>:<vout>"
+        # Auto-discover UTXO
+        found = find_utxo(addr, network, fee_sats + 546)
+        if found is None:
+            raise ValueError(
+                "No spendable UTXO found. You need testnet BTC to pay fees.\n\n"
+                f"Send tBTC to this address: {addr}\n"
+                "Get free testnet coins from: https://coinfaucet.eu/en/btc-testnet/\n"
+                "Then run: bit stamp <file>"
+            )
+        utxo_txid, utxo_vout, utxo_value, utxo_script = found
+        tx.add_input(
+            prev_txid=utxo_txid,
+            output_n=utxo_vout,
+            value=utxo_value,
+            locking_script=utxo_script,
         )
+
+        # Add change output if there's excess
+        fee = _estimate_fee(tx, fee_sats)
+        change = utxo_value - fee
+        if change > 546:
+            tx.add_output(change, address=addr)
+
+        # Sign
+        key = Key(import_key=priv_hex, network=network)
+        tx.sign(key)
 
     # Broadcast
     raw_hex = tx.raw_hex()

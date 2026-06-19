@@ -64,7 +64,7 @@ def init():
     click.echo("")
     click.echo("Next steps:")
     click.echo("  1. Get testnet BTC from a faucet and send to your address")
-    click.echo("  2. bit stamp myfile.pdf --utxo=<txid>:<vout>")
+    click.echo("  2. bit stamp myfile.pdf")
     click.echo("")
 
 
@@ -88,7 +88,7 @@ def init():
 )
 @click.option(
     "--utxo",
-    help="UTXO to spend for fees: 'txid:vout'",
+    help="UTXO to spend for fees: 'txid:vout' (auto-detected if omitted)",
 )
 @click.option(
     "--text",
@@ -113,6 +113,9 @@ def stamp(input_path, content_type, mainnet, utxo, text, meta, fee):
 
     Creates an OP_RETURN transaction with the file's SHA-256 hash
     and broadcasts it to the Bitcoin blockchain.
+
+    If no --utxo is provided, Bit auto-scans your address for
+    spendable UTXOs. You need testnet BTC in your wallet first.
     """
     if not key_exists():
         click.echo("✗ No Bit identity found. Run 'bit init' first.", err=True)
