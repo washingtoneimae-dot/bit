@@ -46,10 +46,11 @@ def save_key(private_key_bytes: bytes):
         private_key_bytes: 32-byte raw private key
     """
     _ensure_dir()
-    key = ec.derive_private_key(private_key_bytes, ec.SECP256K1())
+    priv_int = int.from_bytes(private_key_bytes, byteorder="big")
+    key = ec.derive_private_key(priv_int, ec.SECP256K1())
     pem = key.private_bytes(
         encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.SEC1,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
         encryption_algorithm=serialization.NoEncryption(),
     )
     KEY_PATH.write_bytes(pem)

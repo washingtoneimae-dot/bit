@@ -63,8 +63,8 @@ def _derive_address(
     Returns:
         Bitcoin address string
     """
-    key = Key(import_key=public_key_hex, is_private=False)
-    return key.address(network=network)
+    key = Key(import_key=public_key_hex, is_private=False, network=network)
+    return key.address()
 
 
 def _estimate_fee(tx: Transaction, fee_sats: int = DEFAULT_FEE_SATS) -> int:
