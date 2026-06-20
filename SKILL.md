@@ -14,6 +14,41 @@ metadata:
 
 One-command cryptographic proof of existence for your ideas, code, and designs. GPG signs your document (proving authorship), then stamps its SHA-256 hash to Bitcoin testnet (proving it existed before a specific block). The signed document and stamp log auto-push to GitHub.
 
+### Designed for AI agents
+
+This workflow is built so you tell your AI agent what to do — the agent handles everything:
+
+```
+You: "timestamp my gradient descent idea"
+Agent: writes the document → GPG signs it → stamps to Bitcoin → logs it → pushes to GitHub
+       → "Done. Txid: f9e8d7... Verify: https://blockstream.info/testnet/tx/f9e8d7..."
+```
+
+Once the one-time setup is done (below), the agent uses a single `stamp` command for every IP filing. No manual steps. No remembering flags. Just tell the agent what to protect.
+
+### For developers setting up their own agent
+
+If you're a developer teaching your AI agent this workflow, run the setup once (prerequisites + alias), then your agent can file IP on command.
+
+### For AI agents — how to handle an IP filing request
+
+When your user says "timestamp this" / "file this IP" / "stamp my idea":
+
+1. **Write the document** — create a well-structured `.md` file describing the concept, algorithm, or design. Include: title, date, summary, technical claims, and any novel elements. Save to `~/timestamped-ip/<category>/pending/<name>.md`.
+
+2. **Stamp it** — run `stamp <path> <category>`. The alias handles GPG signing, Bitcoin broadcast, file organization, INDEX.md logging, and git push automatically.
+
+3. **Report back** — tell the user the txid and verification URL. The stamp is now cryptographically proven on Bitcoin testnet and publicly verifiable at `github.com/<user>/timestamped-ip`.
+
+No manual steps between writing and verification. The agent owns the entire pipeline.
+
+| User says | Agent uses category | Example |
+|-----------|-------------------|---------|
+| "timestamp my algorithm" / "a new formula" | `concepts` | Theoretical ideas, math, algorithms |
+| "timestamp this protocol" / "a blockchain spec" | `protocols` | OP_RETURN schemas, data formats, network specs |
+| "timestamp my architecture" / "system design" | `designs` | System diagrams, data models, UI/UX |
+| "timestamp this codebase" / "my implementation" | `systems` | Working software, implementations |
+
 ## When to use
 
 - You have an idea, algorithm, or design you want timestamped proof for
@@ -131,17 +166,18 @@ echo "alias stamp='~/.hermes/scripts/stamp.sh'" >> ~/.bashrc
 source ~/.bashrc
 ```
 
-## Daily use
+## Daily use — tell your agent, not your terminal
 
 ```bash
-# Write your idea
-vim my-invention.md
+# You say this to your AI agent:
+"stamp my idea about zero-knowledge decaf proofs"
 
-# One command
-stamp my-invention.md concepts
-
-# Output:
-# === Stamping: my-invention ===
+# The agent does:
+# 1. Writes a well-structured document (~/.hermes/.../zk-decaf.md)
+# 2. Runs: stamp ~/.hermes/.../zk-decaf.md concepts
+# 3. Reports back:
+#
+# === Stamping: zk-decaf ===
 #   [1/4] Signing with GPG...
 #   [2/4] Stamping to Bitcoin testnet...
 #   → abc123...txid
@@ -151,6 +187,13 @@ stamp my-invention.md concepts
 # === Done ===
 #   Verify:  https://blockstream.info/testnet/tx/abc123...
 ```
+
+The agent handles formatting, signing, broadcasting, logging, and pushing. You just describe the idea. Your IP registry at `github.com/<you>/timestamped-ip` updates automatically.
+
+If you're running the command yourself (not through an agent):
+
+```bash
+stamp my-invention.md concepts
 
 Your file is now:
 - GPG-signed (proves YOU authored it)
