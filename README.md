@@ -242,3 +242,7 @@ See `SECURITY.md` for vulnerability reporting.
 ## License
 
 MIT
+
+## AI Agent Skill
+
+This repo includes a skill file (`SKILL.md`) that teaches AI agents how to set up the complete IP timestamping workflow — GPG signing → Bitcoin stamping → registry → verification. Any AI agent that clones this repo can guide a developer through the setup.
