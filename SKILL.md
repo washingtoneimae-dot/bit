@@ -105,6 +105,27 @@ See Setup section below — one-time install.
 
 See Setup section below — one-time folder + git init.
 
+### For AI agents — how to set up each prerequisite
+
+When the health check finds something missing, don't just print an error. Help the developer fix it, or do it yourself:
+
+| Missing | Agent can do? | Action |
+|---------|:---:|--------|
+| GPG key | ✅ Yes | Run `gpg --batch --generate-key` with the developer's name/email. Ask them for their name and email first. |
+| Bit Protocol | ✅ Yes | Run `pip install bit-protocol && bit init`. Use the venv if one exists in the project. |
+| tBTC funds | ❌ No | Show the developer their address (`bit status`) and the faucet URL. They must fund it in a browser. |
+| Stamp script | ✅ Yes | Create `~/.hermes/scripts/stamp.sh` from the template below, `chmod +x` it, and add the alias to `~/.bashrc`. |
+| IP registry | ✅ Yes | Create the folder structure, `git init`, and `gh repo create`. Ask the developer for the repo name first. |
+
+**When the developer says "set me up" or "file my first IP":**
+
+1. Run the health check.
+2. For each ✗, follow the table above — do what you can, ask the developer for what only they can do.
+3. Re-run the health check until all five show ✓.
+4. Then proceed to the stamp workflow.
+
+**Don't silently skip missing prerequisites.** A stamp with no GPG key still works on-chain but proves nothing about authorship. A stamp with no tBTC fails outright. Check first.
+
 ## Setup — one time per machine
 
 ### 1. Create your IP registry
