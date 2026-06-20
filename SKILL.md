@@ -158,12 +158,10 @@ Your file is now:
 - In your public registry on GitHub
 - Independently verifiable by anyone
 
-## Verification — trustless
-
-Anyone can verify without trusting you or your server:
+## Verifying your own stamps
 
 ```bash
-# 1. Get the file
+# 1. Get the signed file
 curl -O https://raw.githubusercontent.com/YOUR_USER/timestamped-ip/main/concepts/stamped/my-invention.md
 
 # 2. Import your public key
@@ -176,6 +174,104 @@ gpg --verify my-invention.md.asc
 # OP_RETURN contains: protocol magic + version + content type + SHA-256 hash
 # Visit: https://blockstream.info/testnet/tx/<txid>
 ```
+
+## Verifying other people's stamps
+
+This is the power of the system — you can verify anyone's IP claims without trusting them, their server, or any central authority.
+
+### Step 1: Find their stamp
+
+Stamps are public. You can find them via:
+- Their GitHub registry (e.g. `github.com/<user>/timestamped-ip`)
+- Their `INDEX.md` which lists every stamp with txids
+- A Bitcoin block explorer if you have the txid
+- Peer indexes if they run one
+
+Example — Alice claims she invented something on March 15, 2025. Her `INDEX.md` shows:
+
+```markdown
+| 7 | 2025-03-15 | concepts | Gradient Descent 2.0 | a1b2c3d4e5... | [`f9e8d7c6...`](https://blockstream.info/testnet/tx/f9e8...) | ✓ |
+```
+
+### Step 2: Get her document and signature
+
+```bash
+# Clone her registry
+git clone https://github.com/alice/timestamped-ip.git
+cd timestamped-ip
+
+# The document and its .asc signature are both in concepts/stamped/
+ls concepts/stamped/gradient-descent-2.0.md*
+# → gradient-descent-2.0.md
+# → gradient-descent-2.0.md.asc
+```
+
+### Step 3: Get her public key
+
+```bash
+# Option A: From her repo
+gpg --import keys/alice.asc
+
+# Option B: From a keyserver
+gpg --keyserver keys.openpgp.org --recv-keys <her-fingerprint>
+
+# Option C: From the signature itself (extracts key ID)
+gpg --verify gradient-descent-2.0.md.asc 2>&1 | grep "using.*key"
+# → using RSA key ABCD1234...
+gpg --keyserver keys.openpgp.org --recv-keys ABCD1234...
+```
+
+### Step 4: Verify authorship (GPG)
+
+```bash
+gpg --verify concepts/stamped/gradient-descent-2.0.md.asc
+
+# Good signature → Alice definitely wrote this
+# BAD signature → file was tampered with
+# Can't check → need her public key first (step 3)
+```
+
+### Step 5: Verify timing (Bitcoin)
+
+```bash
+# Compute the SHA-256 of the file she stamped
+sha256sum concepts/stamped/gradient-descent-2.0.md
+
+# Now look at the Bitcoin transaction
+# Option A: Block explorer
+curl -s https://blockstream.info/testnet/api/tx/f9e8d7c6... | python3 -c "
+import sys, json
+tx = json.load(sys.stdin)
+for out in tx['vout']:
+    if out['scriptpubkey_type'] == 'op_return':
+        hex_data = out['scriptpubkey'][4:]  # skip '6a' + len byte
+        raw = bytes.fromhex(hex_data)
+        # Bytes 5-36 are the SHA-256 (after 3B magic + 1B version + 1B type)
+        stamped_hash = raw[5:37].hex()
+        print(f'On-chain hash: {stamped_hash}')
+"
+
+# Option B: bit verify
+bit verify concepts/stamped/gradient-descent-2.0.md --txid=f9e8d7c6...
+```
+
+### What the verification proves
+
+| Check | Proves | Trust required |
+|-------|--------|---------------|
+| GPG signature is valid | Alice authored this exact document | Trust Alice's public key (one-time) |
+| SHA-256 matches OP_RETURN | The document you have is what was stamped | None (math only) |
+| Transaction is in a block | The document existed BEFORE that block was mined | None (Bitcoin PoW) |
+| Block timestamp | The document existed before block time ±2 hours | None (blockchain consensus) |
+
+### Red flags
+
+| Situation | What it means |
+|-----------|--------------|
+| GPG key was created AFTER the Bitcoin tx | The key didn't exist at stamp time — authorship unprovable |
+| SHA-256 doesn't match OP_RETURN | The file she's showing you is not what was stamped |
+| No GPG signature, just a hash | Anyone could have stamped it — proves timing but NOT authorship |
+| Repository has force-pushes | INDEX.md history may have been rewritten — check Bitcoin, not git |
 
 No gatekeepers. No subscription. No disclosure. Just math.
 
