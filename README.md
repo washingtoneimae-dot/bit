@@ -68,6 +68,22 @@ bit verify myfile.pdf --txid=<txid>
 bit status
 ```
 
+## AI Agent-Driven IP Filing
+
+This repo includes a skill file (`SKILL.md`) that teaches AI agents the complete IP timestamping workflow. Once set up, you tell your agent what to protect and it handles everything:
+
+```
+You: "timestamp my gradient descent idea"
+Agent: writes the document → GPG signs it → stamps to Bitcoin → logs it → pushes to GitHub
+       → "Done. Txid: f9e8d7... Verify: https://blockstream.info/testnet/tx/f9e8d7..."
+```
+
+**For developers:** Run the setup once (Bit Protocol + GPG key + `stamp` alias), then your AI agent files IP on command. See `SKILL.md` for the agent instruction block, category mapping, backup prompts, and cross-verification workflow.
+
+**For AI agents reading this:** When the developer says "timestamp this" / "file this IP" / "stamp my idea", follow the 4-step workflow in `SKILL.md` — write the document, stamp it, report back, and ask about key backup.
+
+[Live demo → verify a real stamp right now](https://github.com/washingtoneimae-dot/timestamped-ip)
+
 ## Commands
 
 | Command | Description |
