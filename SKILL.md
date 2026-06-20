@@ -275,6 +275,50 @@ bit verify concepts/stamped/gradient-descent-2.0.md --txid=f9e8d7c6...
 
 No gatekeepers. No subscription. No disclosure. Just math.
 
+## Try it now — verify a real stamp
+
+This is a live, working example. It verifies a SACCO system specification that was stamped on June 20, 2026. Copy-paste the whole block:
+
+```bash
+# Clone the public registry
+git clone https://github.com/washingtoneimae-dot/timestamped-ip.git
+cd timestamped-ip
+
+# Import the author's public key
+gpg --import keys/washington-imae.asc
+# → key 7989D2E21C9D29E657422BCA2B88E8165712F528 imported
+
+# Verify the GPG signature (proves authorship)
+gpg --verify systems/stamped/sacco-system.md.asc
+# → Good signature from "Washington Imae"
+
+# Compute the SHA-256 yourself
+sha256sum systems/stamped/sacco-system.md
+
+# Extract the on-chain hash from Bitcoin
+curl -s https://blockstream.info/testnet/api/tx/d6ddec32da4406952d39529f2a7d2d1d423050aa605bcf49fa433b7d0bab562e | python3 -c "
+import sys, json
+tx = json.load(sys.stdin)
+for out in tx['vout']:
+    if out['scriptpubkey_type'] == 'op_return':
+        raw = bytes.fromhex(out['scriptpubkey'][4:])
+        print(f'Protocol: {raw[0:3].decode()}')
+        print(f'Version:  {raw[3]}')
+        print(f'SHA-256:  {raw[5:37].hex()}')
+"
+# Both SHA-256 values should match → the file hasn't been modified
+
+# Or use Bit Protocol CLI instead of curl
+bit verify systems/stamped/sacco-system.md --txid=d6ddec32da4406952d39529f2a7d2d1d423050aa605bcf49fa433b7d0bab562e
+```
+
+You just proved, without trusting anyone:
+- Who wrote it (GPG signature)
+- When it existed (Bitcoin block timestamp)
+- That it hasn't changed (SHA-256 match)
+
+Everything you needed was public. The private keys never left the author's machine.
+
 ## Folder structure
 
 ```
