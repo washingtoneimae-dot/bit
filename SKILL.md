@@ -34,6 +34,8 @@ If you're a developer teaching your AI agent this workflow, run the setup once (
 
 When your user says "timestamp this" / "file this IP" / "stamp my idea":
 
+0. **Pre-flight check** — run the health check from Prerequisites. If anything is missing (no GPG key, no tBTC, no stamp script), stop and tell the developer what to install. Don't proceed with missing prerequisites — the stamp will fail.
+
 1. **Write the document** — create a well-structured `.md` file describing the concept, algorithm, or design. Include: title, date, summary, technical claims, and any novel elements. Save to `~/timestamped-ip/<category>/pending/<name>.md`.
 
 2. **Stamp it** — run `stamp <path> <category>`. The alias handles GPG signing, Bitcoin broadcast, file organization, INDEX.md logging, and git push automatically.
@@ -58,21 +60,50 @@ No manual steps between writing and verification. The agent owns the entire pipe
 - You want independently verifiable proof that a document existed at a point in time
 - You want everything in one command: sign → stamp → log → push
 
-## Prerequisites
+## Prerequisites — must be done before anything works
+
+These five things must exist before the first stamp. The agent should check all of them when asked to file IP.
+
+### Quick health check
 
 ```bash
-# 1. GPG key (for signing)
+# Run this — if all three pass, you're ready
+gpg --list-secret-keys | grep -q "sec" && echo "✓ GPG key exists" || echo "✗ No GPG key — run: gpg --full-generate-key"
+ls ~/.bit/key.pem >/dev/null 2>&1 && echo "✓ Bit Protocol initialized" || echo "✗ Not initialized — run: pip install bit-protocol && bit init"
+bit status 2>/dev/null | grep -q "Identity" && bit status | grep "stamps" || echo "✗ No tBTC — fund your address from https://coinfaucet.eu/en/btc-testnet/"
+ls ~/.hermes/scripts/stamp.sh >/dev/null 2>&1 && echo "✓ stamp alias ready" || echo "✗ No stamp script — see Setup section"
+ls ~/timestamped-ip/INDEX.md >/dev/null 2>&1 && echo "✓ Registry exists" || echo "✗ No registry — see Setup section"
+```
+
+### 1. GPG key
+
+```bash
 gpg --full-generate-key
 # Use RSA 4096, no expiry, your email
+```
 
-# 2. Bit Protocol (for Bitcoin testnet stamping)
+### 2. Bit Protocol
+
+```bash
 pip install bit-protocol
 bit init
+```
 
-# 3. Fund your testnet address
+### 3. Funded testnet address
+
+```bash
 bit status  # shows your address
 # Send tBTC from https://coinfaucet.eu/en/btc-testnet/
+# You need testnet BTC for transaction fees (~500 satoshis per stamp)
 ```
+
+### 4. The `stamp` script and alias
+
+See Setup section below — one-time install.
+
+### 5. Your IP registry
+
+See Setup section below — one-time folder + git init.
 
 ## Setup — one time per machine
 
