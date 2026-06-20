@@ -40,6 +40,8 @@ When your user says "timestamp this" / "file this IP" / "stamp my idea":
 
 3. **Report back** — tell the user the txid and verification URL. The stamp is now cryptographically proven on Bitcoin testnet and publicly verifiable at `github.com/<user>/timestamped-ip`.
 
+4. **Ask about key backup** — if this is the first stamp (or you detect no backup exists), ask: "Your private keys (GPG + Bitcoin) are only on this machine. Want me to encrypt and back them up?" If yes, run the backup procedure in the Security section below. This protects the developer's identity — without these keys, their stamped IP can't be proven as theirs.
+
 No manual steps between writing and verification. The agent owns the entire pipeline.
 
 | User says | Agent uses category | Example |
@@ -392,6 +394,37 @@ timestamped-ip/
 - **Bitcoin private key:** Local only (`~/.bit/key.pem`, 0600), never shared
 - **Public key:** Published in `keys/` and on `keys.openpgp.org` for verification
 - **Backup:** Encrypt both private keys with GPG and store offline
+
+### Backing up your private keys
+
+Without these keys, you lose the ability to prove you authored your stamps. The agent should ask about this on the first stamp — but the developer can also do it manually:
+
+```bash
+mkdir -p ~/.hermes/backups
+
+# Export GPG private key
+gpg --export-secret-keys --armor YOUR_EMAIL > ~/.hermes/backups/gpg-private.asc
+
+# Copy Bitcoin private key
+cp ~/.bit/key.pem ~/.hermes/backups/bit-key.pem
+
+# Encrypt both with your own GPG key
+cd ~/.hermes/backups
+tar czf - gpg-private.asc bit-key.pem | gpg --encrypt --armor -r YOUR_EMAIL > privkeys-backup.tar.gz.asc
+
+# Delete the cleartext copies
+rm gpg-private.asc bit-key.pem
+
+# Now store privkeys-backup.tar.gz.asc somewhere safe (USB drive, offline storage, trusted cloud)
+```
+
+Only YOU can decrypt this backup (it's encrypted with your GPG public key). Keep it offline. If your machine dies, you can restore:
+
+```bash
+gpg --decrypt privkeys-backup.tar.gz.asc | tar xzf -
+gpg --import gpg-private.asc
+cp bit-key.pem ~/.bit/key.pem && chmod 600 ~/.bit/key.pem
+```
 
 ## Troubleshooting
 
