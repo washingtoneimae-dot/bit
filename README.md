@@ -195,6 +195,22 @@ bit verify BIT_PROTOCOL_CONCEPTION.md --txid=64f0bb98...
 bit verify 5G_SSB_Phase-Shift_Observer.md --txid=3ed6dc22...
 ```
 
+---
+
+## Ecosystem
+
+Bit Protocol is the flagship of the **Timestamped IP ecosystem** — a family of tools unified by the idea that proving *when* something happened is the foundation of IP, trust, and transparency.
+
+| Project | Purpose |
+|---------|---------|
+| **Bit Protocol** *(this repo)* | Core protocol — decentralized proof-of-existence on Bitcoin |
+| [**Timestamped IP**](https://github.com/washingtoneimae-dot/timestamped-ip) | Public verifiable prior-art registry — GPG-signed, Bitcoin-anchored |
+| [**SACCO System**](https://github.com/washingtoneimae-dot/saccosystem2) | Member statement automation — verifiable financial history for cooperatives |
+| **SolDegarde** *(private)* | Solar panel soiling tracking — timestamped sensor data → optimized cleaning cycles |
+| **5G SSB Observer** *(private)* | Tower structural health monitoring — timestamped phase logs → predictive maintenance |
+
+Every project in the ecosystem shares one pattern: **collect data → timestamp immutably → extract value from the proof.**
+
 ## Troubleshooting
 
 | Problem | Cause | Fix |
